@@ -13,43 +13,40 @@ class ContentBasedRecommender:
     @classmethod
     def load_model(cls, folder_path="modelo_recomendador"):
         """
-        Carga un modelo previamente guardado desde una carpeta.
+        Carga un modelo previamente guardado desde una carpeta usando CSV y NPY.
         
         Args:
             folder_path (str): Ruta a la carpeta del modelo
             
         Returns:
-            LightRecommender: Instancia del recomendador o None si hay error
+            ContentBasedRecommender: Instancia del recomendador o None si hay error
         """
         try:
-            # Convertir a ruta absoluta si es relativa
             model_path = Path(folder_path).resolve()
-            
             print(f"Intentando cargar modelo desde: {model_path}")
             
             if not model_path.exists():
                 raise FileNotFoundError(f"Carpeta no encontrada: {model_path}")
             
-            # Verificar que existan los archivos necesarios
-            parquet_file = model_path / "products.parquet"
+            csv_file = model_path / "products.csv.gz"
             embeddings_file = model_path / "embeddings.npy"
             
-            print(f"Buscando archivo products.parquet en: {parquet_file}")
+            print(f"Buscando archivo products.csv.gz en: {csv_file}")
             print(f"Buscando archivo embeddings.npy en: {embeddings_file}")
             
-            if not parquet_file.exists():
-                raise FileNotFoundError(f"Archivo products.parquet no encontrado en {model_path}")
+            if not csv_file.exists():
+                raise FileNotFoundError(f"Archivo products.csv.gz no encontrado en {model_path}")
             if not embeddings_file.exists():
                 raise FileNotFoundError(f"Archivo embeddings.npy no encontrado en {model_path}")
             
             instance = cls()
             
-            # Cargar DataFrame desde Parquet
+            # Cargar DataFrame desde CSV comprimido
             try:
-                instance.products_df = pd.read_parquet(parquet_file)
-                print(f"Archivo Parquet cargado exitosamente. Shape: {instance.products_df.shape}")
+                instance.products_df = pd.read_csv(csv_file)
+                print(f"Archivo CSV cargado exitosamente. Shape: {instance.products_df.shape}")
             except Exception as e:
-                raise Exception(f"Error al cargar products.parquet: {str(e)}")
+                raise Exception(f"Error al cargar products.csv.gz: {str(e)}")
             
             # Cargar embeddings
             try:
