@@ -6,7 +6,7 @@ from recomender import ContentBasedRecommender
 app = FastAPI()
 
 # Cargar el modelo de recomendación
-recommender = ContentBasedRecommender.load_model(folder_path="modelo_recomendador")
+recommender = ContentBasedRecommender.load_model(folder_path="./modelo_recomendador")
 
 
 # origins = [

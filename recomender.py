@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
 import os
+from pathlib import Path
+
 
 class ContentBasedRecommender:
     def __init__(self):
@@ -10,30 +12,51 @@ class ContentBasedRecommender:
 
     @classmethod
     def load_model(cls, folder_path="modelo_recomendador"):
-        """Carga un modelo previamente guardado desde una carpeta"""
+        """
+        Carga un modelo previamente guardado desde una carpeta.
+        
+        Args:
+            folder_path (str): Ruta a la carpeta del modelo
+            
+        Returns:
+            LightRecommender: Instancia del recomendador o None si hay error
+        """
         try:
-            if not os.path.exists(folder_path):
+            # Convertir la ruta a objeto Path para mejor compatibilidad cross-platform
+            model_path = Path(folder_path)
+            
+            if not model_path.exists():
                 raise FileNotFoundError(f"Carpeta no encontrada: {folder_path}")
-
+            
+            # Verificar que existan los archivos necesarios
+            parquet_file = model_path / "products.parquet"
+            embeddings_file = model_path / "embeddings.npy"
+            
+            if not parquet_file.exists():
+                raise FileNotFoundError(f"Archivo products.parquet no encontrado en {folder_path}")
+            if not embeddings_file.exists():
+                raise FileNotFoundError(f"Archivo embeddings.npy no encontrado en {folder_path}")
+            
             instance = cls()
             
             # Cargar DataFrame desde Parquet
-            instance.products_df = pd.read_parquet(
-                os.path.join(folder_path, "products.parquet")
-            )
+            try:
+                instance.products_df = pd.read_parquet(parquet_file)
+            except Exception as e:
+                raise Exception(f"Error al cargar products.parquet: {str(e)}")
             
             # Cargar embeddings
-            instance.product_embeddings = np.load(
-                os.path.join(folder_path, "embeddings.npy")
-            )
-
+            try:
+                instance.product_embeddings = np.load(embeddings_file)
+            except Exception as e:
+                raise Exception(f"Error al cargar embeddings.npy: {str(e)}")
+            
             print("Modelo cargado exitosamente")
             return instance
-
         except Exception as e:
             print(f"Error al cargar el modelo: {str(e)}")
             return None
-
+        
     def get_recommendations(self, product_id, n_recommendations=5):
         """Obtiene recomendaciones basadas en un ID de producto"""
         if product_id not in self.products_df['product_id'].values:
