@@ -22,37 +22,45 @@ class ContentBasedRecommender:
             LightRecommender: Instancia del recomendador o None si hay error
         """
         try:
-            # Convertir la ruta a objeto Path para mejor compatibilidad cross-platform
-            model_path = Path(folder_path)
+            # Convertir a ruta absoluta si es relativa
+            model_path = Path(folder_path).resolve()
+            
+            print(f"Intentando cargar modelo desde: {model_path}")
             
             if not model_path.exists():
-                raise FileNotFoundError(f"Carpeta no encontrada: {folder_path}")
+                raise FileNotFoundError(f"Carpeta no encontrada: {model_path}")
             
             # Verificar que existan los archivos necesarios
             parquet_file = model_path / "products.parquet"
             embeddings_file = model_path / "embeddings.npy"
             
+            print(f"Buscando archivo products.parquet en: {parquet_file}")
+            print(f"Buscando archivo embeddings.npy en: {embeddings_file}")
+            
             if not parquet_file.exists():
-                raise FileNotFoundError(f"Archivo products.parquet no encontrado en {folder_path}")
+                raise FileNotFoundError(f"Archivo products.parquet no encontrado en {model_path}")
             if not embeddings_file.exists():
-                raise FileNotFoundError(f"Archivo embeddings.npy no encontrado en {folder_path}")
+                raise FileNotFoundError(f"Archivo embeddings.npy no encontrado en {model_path}")
             
             instance = cls()
             
             # Cargar DataFrame desde Parquet
             try:
                 instance.products_df = pd.read_parquet(parquet_file)
+                print(f"Archivo Parquet cargado exitosamente. Shape: {instance.products_df.shape}")
             except Exception as e:
                 raise Exception(f"Error al cargar products.parquet: {str(e)}")
             
             # Cargar embeddings
             try:
                 instance.product_embeddings = np.load(embeddings_file)
+                print(f"Archivo de embeddings cargado exitosamente. Shape: {instance.product_embeddings.shape}")
             except Exception as e:
                 raise Exception(f"Error al cargar embeddings.npy: {str(e)}")
             
             print("Modelo cargado exitosamente")
             return instance
+
         except Exception as e:
             print(f"Error al cargar el modelo: {str(e)}")
             return None
