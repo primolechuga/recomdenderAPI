@@ -38,17 +38,17 @@ def get_recommendations_by_product_id(product_id: int, n_recommendations: int = 
     recomendaciones = recommender.get_recommendations(product_id=product_id, n_recommendations=n_recommendations)
     return recomendaciones.to_dict(orient="records") # Convertir DataFrame a lista de diccionarios
 
-#Se desabilita la función de recomendaciones por texto ya que es muy pesada y no se puede ejecutar en un servidor gratuito
-# @app.get("/recommendations/by-text/")
-# def get_recommendations_by_text(query: str, n_recommendations: int = Query(5, gt=0)):
-#     """
-#     Obtiene recomendaciones basadas en un texto de búsqueda.
+Se desabilita la función de recomendaciones por texto ya que es muy pesada y no se puede ejecutar en un servidor gratuito
+@app.get("/recommendations/by-text/")
+def get_recommendations_by_text(query: str, n_recommendations: int = Query(5, gt=0)):
+    """
+    Obtiene recomendaciones basadas en un texto de búsqueda.
     
-#     - **query**: Texto de búsqueda para el cual se desean recomendaciones.
-#     - **n_recommendations**: Número de recomendaciones a devolver (por defecto 5).
-#     """
-#     recomendaciones = recommender.recommend_from_text(query, n_recommendations=n_recommendations)
-#     return recomendaciones.to_dict(orient="records")  # Convertir DataFrame a lista de diccionarios
+    - **query**: Texto de búsqueda para el cual se desean recomendaciones.
+    - **n_recommendations**: Número de recomendaciones a devolver (por defecto 5).
+    """
+    recomendaciones = recommender.recommend_from_text(query, n_recommendations=n_recommendations)
+    return recomendaciones.to_dict(orient="records")  # Convertir DataFrame a lista de diccionarios
 
 @app.get("/health")
 def health_check():

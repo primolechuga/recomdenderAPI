@@ -1,70 +1,43 @@
-import numpy as np
 import pandas as pd
+import numpy as np
+from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
+import re
+import pickle
 import os
-from pathlib import Path
-import pickle  # Importar pickle para manejar archivos .pkl
-from joblib import load
 
 class ContentBasedRecommender:
     def __init__(self):
+        self.model = SentenceTransformer('all-MiniLM-L6-v2')
         self.product_embeddings = None
         self.products_df = None
 
-    @classmethod
-    def load_model(cls, folder_path="modelo_recomendador"):
-        """
-        Carga un modelo previamente guardado desde una carpeta usando archivos .pkl.
-        
-        Args:
-            folder_path (str): Ruta a la carpeta del modelo
-            
-        Returns:
-            ContentBasedRecommender: Instancia del recomendador o None si hay error
-        """
-        try:
-            model_path = Path(folder_path).resolve()
-            print(f"Intentando cargar modelo desde: {model_path}")
-            
-            if not model_path.exists():
-                raise FileNotFoundError(f"Carpeta no encontrada: {model_path}")
-            
-            products_file = model_path / "products.pkl"  # Archivo .pkl para el DataFrame
-            embeddings_file = model_path / "embeddings.pkl"  # Archivo .pkl para los embeddings
-            
-            print(f"Buscando archivo products.pkl en: {products_file}")
-            print(f"Buscando archivo embeddings.pkl en: {embeddings_file}")
-            
-            if not products_file.exists():
-                raise FileNotFoundError(f"Archivo products.pkl no encontrado en {model_path}")
-            if not embeddings_file.exists():
-                raise FileNotFoundError(f"Archivo embeddings.pkl no encontrado en {model_path}")
-            
-            instance = cls()
-            
-            # Cargar DataFrame desde .pkl
-            try:
-                instance.products_df = load(products_file)
-                print(f"Archivo products.pkl cargado exitosamente. Shape: {instance.products_df.shape}")
-            except Exception as e:
-                raise Exception(f"Error al cargar products.pkl: {str(e)}")
-            
-            # Cargar embeddings desde .pkl
-            try:
-                instance.product_embeddings = load(embeddings_file)
-                print(f"Archivo de embeddings.pkl cargado exitosamente. Shape: {instance.product_embeddings.shape}")
-            except Exception as e:
-                raise Exception(f"Error al cargar embeddings.pkl: {str(e)}")
-            
-            print("Modelo cargado exitosamente")
-            return instance
+    def preprocess_text(self, text):
+        if isinstance(text, str):
+            text = text.lower()
+            text = re.sub(r'[^\w\s]', ' ', text)
+            return text
+        return ''
 
-        except Exception as e:
-            print(f"Error al cargar el modelo: {str(e)}")
-            return None
-        
+    def create_product_description(self, row):
+        return f"{row['name']} {row['main_category']} {row['sub_category']}"
+
+    def fit(self, products_data):
+        if 'product_id' not in products_data.columns:
+            products_data['product_id'] = range(len(products_data))
+
+        self.products_df = products_data.copy()
+        self.products_df['combined_features'] = self.products_df.apply(
+            lambda x: self.preprocess_text(self.create_product_description(x)), axis=1
+        )
+
+        self.product_embeddings = self.model.encode(
+            self.products_df['combined_features'].tolist(),
+            show_progress_bar=True
+        )
+        return self
+
     def get_recommendations(self, product_id, n_recommendations=5):
-        """Obtiene recomendaciones basadas en un ID de producto"""
         if product_id not in self.products_df['product_id'].values:
             raise ValueError("ID de producto no encontrado")
 
@@ -81,19 +54,63 @@ class ContentBasedRecommender:
         recommendations['similarity_score'] = similarity_scores[similar_indices]
         return recommendations
 
-    def get_product_details(self, product_id):
-        """Obtiene detalles de un producto específico"""
-        if product_id not in self.products_df['product_id'].values:
-            return None
-        
-        return self.products_df[self.products_df['product_id'] == product_id].iloc[0].to_dict()
+    def recommend_from_text(self, query_text, n_recommendations=5):
+        processed_query = self.preprocess_text(query_text)
+        query_embedding = self.model.encode([processed_query])[0]
 
-    def batch_recommendations(self, product_ids, n_recommendations=5):
-        """Genera recomendaciones para múltiples productos a la vez"""
-        all_recommendations = {}
-        for pid in product_ids:
-            try:
-                all_recommendations[pid] = self.get_recommendations(pid, n_recommendations)
-            except ValueError:
-                continue
-        return all_recommendations
+        similarity_scores = cosine_similarity(
+            [query_embedding],
+            self.product_embeddings
+        )[0]
+
+        similar_indices = similarity_scores.argsort()[::-1][:n_recommendations]
+        recommendations = self.products_df.iloc[similar_indices][
+            ['product_id', 'name', 'main_category', 'sub_category', 'ratings']
+        ].copy()
+        recommendations['similarity_score'] = similarity_scores[similar_indices]
+        return recommendations
+
+    def save_model(self, folder_path="modelo_recomendador"):
+        """Guarda el modelo y sus datos en una carpeta específica"""
+        # Crear la carpeta si no existe
+        os.makedirs(folder_path, exist_ok=True)
+
+        # Guardar el DataFrame de productos
+        self.products_df.to_pickle(os.path.join(folder_path, "products.pkl"))
+
+        # Guardar los embeddings de productos
+        with open(os.path.join(folder_path, "embeddings.pkl"), 'wb') as f:
+            pickle.dump(self.product_embeddings, f)
+
+        print(f"Modelo guardado en: {folder_path}")
+
+    @classmethod
+    def load_model(cls, folder_path="modelo_recomendador"):
+        """Carga un modelo guardado desde una carpeta específica"""
+        try:
+            # Verificar que existan los archivos necesarios
+            if not os.path.exists(folder_path):
+                raise FileNotFoundError(f"No se encontró la carpeta: {folder_path}")
+
+            products_path = os.path.join(folder_path, "products.pkl")
+            embeddings_path = os.path.join(folder_path, "embeddings.pkl")
+
+            if not os.path.exists(products_path) or not os.path.exists(embeddings_path):
+                raise FileNotFoundError("No se encontraron los archivos necesarios del modelo")
+
+            # Crear una nueva instancia
+            instance = cls()
+
+            # Cargar el DataFrame de productos
+            instance.products_df = pd.read_pickle(products_path)
+
+            # Cargar los embeddings de productos
+            with open(embeddings_path, 'rb') as f:
+                instance.product_embeddings = pickle.load(f)
+
+            print("Modelo cargado exitosamente")
+            return instance
+
+        except Exception as e:
+            print(f"Error al cargar el modelo: {str(e)}")
+            return None
