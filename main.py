@@ -1,13 +1,26 @@
 from fastapi import FastAPI, Query
 from typing import Optional
 from fastapi.middleware.cors import CORSMiddleware
-from recomender import ContentBasedRecommender  
+from recomender import SistemaRecomendacion  
+import tensorflow as tf
+import pandas as pd
 
 app = FastAPI()
 
-# Cargar el modelo de recomendación
-recommender = ContentBasedRecommender.load_model(folder_path="./modelo_recomendador")
+def cargar_datos(ruta: str = './datos_productos.csv') -> pd.DataFrame:
+    """Carga los datos desde disco"""
+    print("Cargando datos...")
+    return pd.read_csv(ruta, index_col=0)
 
+
+def cargar_modelo(ruta: str = './modelo_recomendacion.keras') -> tf.keras.Model:
+    """Carga el modelo desde disco"""
+    print("Cargando modelo...")
+    return tf.keras.models.load_model(ruta)
+
+data = cargar_datos()
+model = cargar_modelo()
+recommender = SistemaRecomendacion(model, data)
 
 # origins = [
 #     "http://localhost",
@@ -23,6 +36,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+
 @app.get("/")
 def read_root():
     return {"message": "Bienvenido al sistema de recomendación"}
@@ -35,20 +50,8 @@ def get_recommendations_by_product_id(product_id: int, n_recommendations: int = 
     - **product_id**: ID del producto para el cual se desean recomendaciones.
     - **n_recommendations**: Número de recomendaciones a devolver (por defecto 5).
     """
-    recomendaciones = recommender.get_recommendations(product_id=product_id, n_recommendations=n_recommendations)
-    return recomendaciones.to_dict(orient="records") # Convertir DataFrame a lista de diccionarios
-
-
-@app.get("/recommendations/by-text/")
-def get_recommendations_by_text(query: str, n_recommendations: int = Query(5, gt=0)):
-    """
-    Obtiene recomendaciones basadas en un texto de búsqueda.
-    
-    - **query**: Texto de búsqueda para el cual se desean recomendaciones.
-    - **n_recommendations**: Número de recomendaciones a devolver (por defecto 5).
-    """
-    recomendaciones = recommender.recommend_from_text(query, n_recommendations=n_recommendations)
-    return recomendaciones.to_dict(orient="records")  # Convertir DataFrame a lista de diccionarios
+    nombre,recomendaciones = recommender.mostrar_recomendaciones(product_id, top_n= n_recommendations)
+    return {"product_name": nombre, "recommendations": recomendaciones}
 
 @app.get("/health")
 def health_check():
