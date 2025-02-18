@@ -13,7 +13,7 @@ class ContentBasedRecommender:
     @classmethod
     def load_model(cls, folder_path="modelo_recomendador"):
         """
-        Carga un modelo previamente guardado desde una carpeta usando CSV y NPY.
+        Carga un modelo previamente guardado desde una carpeta usando CSV y NPZ.
         
         Args:
             folder_path (str): Ruta a la carpeta del modelo
@@ -28,32 +28,33 @@ class ContentBasedRecommender:
             if not model_path.exists():
                 raise FileNotFoundError(f"Carpeta no encontrada: {model_path}")
             
-            csv_file = model_path / "products.csv.gz"
-            embeddings_file = model_path / "embeddings.npy"
+            csv_file = model_path / "products.csv"  # Cambiado a CSV sin comprimir
+            embeddings_file = model_path / "embeddings.npz"  # Cambiado a NPZ
             
-            print(f"Buscando archivo products.csv.gz en: {csv_file}")
-            print(f"Buscando archivo embeddings.npy en: {embeddings_file}")
+            print(f"Buscando archivo products.csv en: {csv_file}")
+            print(f"Buscando archivo embeddings.npz en: {embeddings_file}")
             
             if not csv_file.exists():
-                raise FileNotFoundError(f"Archivo products.csv.gz no encontrado en {model_path}")
+                raise FileNotFoundError(f"Archivo products.csv no encontrado en {model_path}")
             if not embeddings_file.exists():
-                raise FileNotFoundError(f"Archivo embeddings.npy no encontrado en {model_path}")
+                raise FileNotFoundError(f"Archivo embeddings.npz no encontrado en {model_path}")
             
             instance = cls()
             
-            # Cargar DataFrame desde CSV comprimido
+            # Cargar DataFrame desde CSV
             try:
                 instance.products_df = pd.read_csv(csv_file)
                 print(f"Archivo CSV cargado exitosamente. Shape: {instance.products_df.shape}")
             except Exception as e:
-                raise Exception(f"Error al cargar products.csv.gz: {str(e)}")
+                raise Exception(f"Error al cargar products.csv: {str(e)}")
             
-            # Cargar embeddings
+            # Cargar embeddings desde NPZ
             try:
-                instance.product_embeddings = np.load(embeddings_file)
+                embeddings_data = np.load(embeddings_file)
+                instance.product_embeddings = embeddings_data['embeddings']  # Extraer el array 'embeddings'
                 print(f"Archivo de embeddings cargado exitosamente. Shape: {instance.product_embeddings.shape}")
             except Exception as e:
-                raise Exception(f"Error al cargar embeddings.npy: {str(e)}")
+                raise Exception(f"Error al cargar embeddings.npz: {str(e)}")
             
             print("Modelo cargado exitosamente")
             return instance
