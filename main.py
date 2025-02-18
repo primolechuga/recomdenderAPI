@@ -38,7 +38,7 @@ def get_recommendations_by_product_id(product_id: int, n_recommendations: int = 
     recomendaciones = recommender.get_recommendations(product_id=product_id, n_recommendations=n_recommendations)
     return recomendaciones.to_dict(orient="records") # Convertir DataFrame a lista de diccionarios
 
-Se desabilita la función de recomendaciones por texto ya que es muy pesada y no se puede ejecutar en un servidor gratuito
+
 @app.get("/recommendations/by-text/")
 def get_recommendations_by_text(query: str, n_recommendations: int = Query(5, gt=0)):
     """
