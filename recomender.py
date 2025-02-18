@@ -3,6 +3,7 @@ import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
 import os
 from pathlib import Path
+import pickle  # Importar pickle para manejar archivos .pkl
 
 
 class ContentBasedRecommender:
@@ -13,7 +14,7 @@ class ContentBasedRecommender:
     @classmethod
     def load_model(cls, folder_path="modelo_recomendador"):
         """
-        Carga un modelo previamente guardado desde una carpeta usando CSV y NPZ.
+        Carga un modelo previamente guardado desde una carpeta usando archivos .pkl.
         
         Args:
             folder_path (str): Ruta a la carpeta del modelo
@@ -28,33 +29,34 @@ class ContentBasedRecommender:
             if not model_path.exists():
                 raise FileNotFoundError(f"Carpeta no encontrada: {model_path}")
             
-            csv_file = model_path / "products.csv"  # Cambiado a CSV sin comprimir
-            embeddings_file = model_path / "embeddings.npz"  # Cambiado a NPZ
+            products_file = model_path / "products.pkl"  # Archivo .pkl para el DataFrame
+            embeddings_file = model_path / "embeddings.pkl"  # Archivo .pkl para los embeddings
             
-            print(f"Buscando archivo products.csv en: {csv_file}")
-            print(f"Buscando archivo embeddings.npz en: {embeddings_file}")
+            print(f"Buscando archivo products.pkl en: {products_file}")
+            print(f"Buscando archivo embeddings.pkl en: {embeddings_file}")
             
-            if not csv_file.exists():
-                raise FileNotFoundError(f"Archivo products.csv no encontrado en {model_path}")
+            if not products_file.exists():
+                raise FileNotFoundError(f"Archivo products.pkl no encontrado en {model_path}")
             if not embeddings_file.exists():
-                raise FileNotFoundError(f"Archivo embeddings.npz no encontrado en {model_path}")
+                raise FileNotFoundError(f"Archivo embeddings.pkl no encontrado en {model_path}")
             
             instance = cls()
             
-            # Cargar DataFrame desde CSV
+            # Cargar DataFrame desde .pkl
             try:
-                instance.products_df = pd.read_csv(csv_file)
-                print(f"Archivo CSV cargado exitosamente. Shape: {instance.products_df.shape}")
+                with open(products_file, "rb") as f:
+                    instance.products_df = pickle.load(f)
+                print(f"Archivo products.pkl cargado exitosamente. Shape: {instance.products_df.shape}")
             except Exception as e:
-                raise Exception(f"Error al cargar products.csv: {str(e)}")
+                raise Exception(f"Error al cargar products.pkl: {str(e)}")
             
-            # Cargar embeddings desde NPZ
+            # Cargar embeddings desde .pkl
             try:
-                embeddings_data = np.load(embeddings_file)
-                instance.product_embeddings = embeddings_data['embeddings']  # Extraer el array 'embeddings'
-                print(f"Archivo de embeddings cargado exitosamente. Shape: {instance.product_embeddings.shape}")
+                with open(embeddings_file, "rb") as f:
+                    instance.product_embeddings = pickle.load(f)
+                print(f"Archivo de embeddings.pkl cargado exitosamente. Shape: {instance.product_embeddings.shape}")
             except Exception as e:
-                raise Exception(f"Error al cargar embeddings.npz: {str(e)}")
+                raise Exception(f"Error al cargar embeddings.pkl: {str(e)}")
             
             print("Modelo cargado exitosamente")
             return instance
