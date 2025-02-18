@@ -4,7 +4,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 import os
 from pathlib import Path
 import pickle  # Importar pickle para manejar archivos .pkl
-
+from joblib import load
 
 class ContentBasedRecommender:
     def __init__(self):
@@ -44,16 +44,14 @@ class ContentBasedRecommender:
             
             # Cargar DataFrame desde .pkl
             try:
-                with open(products_file, "rb") as f:
-                    instance.products_df = pickle.load(f)
+                instance.products_df = load(products_file)
                 print(f"Archivo products.pkl cargado exitosamente. Shape: {instance.products_df.shape}")
             except Exception as e:
                 raise Exception(f"Error al cargar products.pkl: {str(e)}")
             
             # Cargar embeddings desde .pkl
             try:
-                with open(embeddings_file, "rb") as f:
-                    instance.product_embeddings = pickle.load(f)
+                instance.product_embeddings = load(embeddings_file)
                 print(f"Archivo de embeddings.pkl cargado exitosamente. Shape: {instance.product_embeddings.shape}")
             except Exception as e:
                 raise Exception(f"Error al cargar embeddings.pkl: {str(e)}")
