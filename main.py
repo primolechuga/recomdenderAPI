@@ -49,3 +49,7 @@ def get_recommendations_by_product_id(product_id: int, n_recommendations: int = 
 #     """
 #     recomendaciones = recommender.recommend_from_text(query, n_recommendations=n_recommendations)
 #     return recomendaciones.to_dict(orient="records")  # Convertir DataFrame a lista de diccionarios
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
