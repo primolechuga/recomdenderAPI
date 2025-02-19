@@ -1,32 +1,20 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException
 from typing import Optional
 from fastapi.middleware.cors import CORSMiddleware
-from recomender import SistemaRecomendacion  
+from recomender import ContentBasedRecommender
 import tensorflow as tf
 import pandas as pd
+import requests
+import zipfile
+import io
+import os
 
 app = FastAPI()
 
-def cargar_datos(ruta: str = './datos_productos.csv') -> pd.DataFrame:
-    """Carga los datos desde disco"""
-    print("Cargando datos...")
-    return pd.read_csv(ruta, index_col=0)
 
+recommender = ContentBasedRecommender(model_path="modelo_recomendador")
+recommender.load_model()
 
-def cargar_modelo(ruta: str = './modelo_recomendacion.keras') -> tf.keras.Model:
-    """Carga el modelo desde disco"""
-    print("Cargando modelo...")
-    return tf.keras.models.load_model(ruta)
-
-data = cargar_datos()
-model = cargar_modelo()
-recommender = SistemaRecomendacion(model, data)
-
-# origins = [
-#     "http://localhost",
-#     "http://localhost:8000",
-    
-# ]
 
 app.add_middleware(
     CORSMiddleware,
@@ -35,8 +23,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
 
 @app.get("/")
 def read_root():
@@ -50,8 +36,9 @@ def get_recommendations_by_product_id(product_id: int, n_recommendations: int = 
     - **product_id**: ID del producto para el cual se desean recomendaciones.
     - **n_recommendations**: Número de recomendaciones a devolver (por defecto 5).
     """
-    nombre,recomendaciones = recommender.mostrar_recomendaciones(product_id, top_n= n_recommendations)
-    return {"product_name": nombre, "recommendations": recomendaciones}
+    recomendaciones = recommender.get_recommendations(product_id, n_recommendations).to_dict(orient="records")
+    return recomendaciones
+    
 
 @app.get("/health")
 def health_check():
